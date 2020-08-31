@@ -57,26 +57,26 @@ public class EvalHelper {
         try{
             // check args
             if(args.length != 1){
-                logger.error("Invalid Args"); return;
+                throw new Exception("Invalid Args");
             }
             // check file
             File source = new File(args[0]);
             if(!source.exists()){
-                logger.error("File not found"); return;
+                throw new Exception("File Not Found");
             }
             logger.info("Preparing Env...");
             // prepare env if not exists
             File rootFile = new File(root);
-            if(!rootFile.exists()){if(!rootFile.mkdirs()){logger.error("Could not create env dir"); return;}}
+            if(!rootFile.exists()){if(!rootFile.mkdirs()){throw new Exception("Could not create temp env");}}
             // create temp dir
             long tmpID = Math.abs(new Random().nextLong());
             File tmpRoot = new File(root+tmpID+"/");
-            if(!tmpRoot.exists()){if(!tmpRoot.mkdirs()){logger.error("Could not create temp dir"); return;}}
+            if(!tmpRoot.exists()){if(!tmpRoot.mkdirs()){throw new Exception("Could not create temp dir");}}
             else{FileUtils.cleanDirectory(tmpRoot);}
             // move file
             File tempFile = new File(root+tmpID+"/tmp");
             if(!source.renameTo(tempFile)){
-                logger.error("Could not move file to temp dir"); return;
+                throw new Exception("Could not move file to temp dir");
             }
             logger.info("Processing file...");
             String content = new String(Files.readAllBytes(tempFile.toPath()));
@@ -85,21 +85,21 @@ public class EvalHelper {
             String mainFileName = "tmp";
             while(matcher.find()){
                 if(found){
-                    logger.error("File cant contain multiple classes"); return;
+                    throw new Exception("File cant contain multiple classes");
                 }
                 if(matcher.groupCount() != 3){
-                    logger.error("Invalid Data"); return;
+                    throw new Exception("Invalid Data");
                 }
                 mainFileName = matcher.group(2).trim();
                 found = true;
             }
             if(!found){
-                logger.error("Could not find public class"); return;
+                throw new Exception("Could not find public class");
             }
             // move file to final name
             File compileFile = new File(root+tmpID+"/"+mainFileName+".java");
             if(!tempFile.renameTo(compileFile)){
-                logger.error("Could not rename temp file"); return;
+                throw new Exception("Could not rename temp file");
             }
             // compile
             logger.info("Compiling classes...");
@@ -118,8 +118,10 @@ public class EvalHelper {
             // finish
             logger.info("Execution finished");
             FileUtils.deleteDirectory(tmpRoot);
+            System.exit(0);
         }catch (Exception e){
             logger.error("An Error Occurred: ",e);
+            System.exit(-1);
         }
     }
 }
