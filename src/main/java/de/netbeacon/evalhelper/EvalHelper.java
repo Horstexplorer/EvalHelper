@@ -66,26 +66,30 @@ public class EvalHelper {
             }
             logger.info("Preparing Env...");
             // prepare env if not exists
-            File rootFile = new File(root);
-            if(!rootFile.exists()){if(!rootFile.mkdirs()){throw new Exception("Could not create temp env");}}
+            File rootPath = new File(root);
+            if(!rootPath.exists()){
+                Files.createDirectories(rootPath.toPath());
+            }
             // create temp dir
             long tmpID = Math.abs(new Random().nextLong());
-            File tmpRoot = new File(root+tmpID+"/");
-            if(!tmpRoot.exists()){if(!tmpRoot.mkdirs()){throw new Exception("Could not create temp dir");}}
-            else{FileUtils.cleanDirectory(tmpRoot);}
-            // move file
-            File tempFile = new File(root+tmpID+"/tmp");
-            if(!source.renameTo(tempFile)){
-                throw new Exception("Could not move file to temp dir");
+            File tmpDir = new File(rootPath.getAbsolutePath()+"/"+tmpID);
+            if(!tmpDir.exists()){
+                Files.createDirectories(tmpDir.toPath());
             }
+            else{
+                FileUtils.cleanDirectory(tmpDir);
+            }
+            // move file
+            File tmpFile = new File(tmpDir.getAbsolutePath()+"/"+"source");
+            Files.move(source.toPath(), tmpFile.toPath());
             logger.info("Processing file...");
-            String content = new String(Files.readAllBytes(tempFile.toPath()));
+            String content = new String(Files.readAllBytes(tmpFile.toPath()));
             Matcher matcher = pattern.matcher(content);
             boolean found = false;
-            String mainFileName = "tmp";
+            String mainFileName = "";
             while(matcher.find()){
                 if(found){
-                    throw new Exception("File cant contain multiple classes");
+                    throw new Exception("File contains multiple classes");
                 }
                 if(matcher.groupCount() != 3){
                     throw new Exception("Invalid Data");
@@ -97,8 +101,8 @@ public class EvalHelper {
                 throw new Exception("Could not find public class");
             }
             // move file to final name
-            File compileFile = new File(root+tmpID+"/"+mainFileName+".java");
-            if(!tempFile.renameTo(compileFile)){
+            File compileFile = new File(tmpDir.getAbsolutePath()+"/"+mainFileName+".java");
+            if(!tmpFile.renameTo(compileFile)){
                 throw new Exception("Could not rename temp file");
             }
             // compile
@@ -107,7 +111,7 @@ public class EvalHelper {
             compiler.run(null, null, null, compileFile.getAbsolutePath());
             // load classes
             logger.info("Loading classes...");
-            URLClassLoader urlClassLoader = new URLClassLoader(new URL[]{tmpRoot.toURI().toURL()}, EvalHelper.class.getClassLoader());
+            URLClassLoader urlClassLoader = new URLClassLoader(new URL[]{tmpDir.toURI().toURL()}, EvalHelper.class.getClassLoader());
             // start main class
             logger.info("Executing main method of class "+mainFileName+"...");
             System.out.println();
@@ -117,7 +121,7 @@ public class EvalHelper {
             System.out.println();
             // finish
             logger.info("Execution finished");
-            FileUtils.deleteDirectory(tmpRoot);
+            FileUtils.deleteDirectory(tmpDir);
             System.exit(0);
         }catch (Exception e){
             logger.error("An Error Occurred: ",e);
